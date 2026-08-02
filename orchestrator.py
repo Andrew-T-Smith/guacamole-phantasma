@@ -99,7 +99,7 @@ def spawn_session(session_id : str, backing_path: str | Path, template_xml_path:
     #Start the virtual machine
     spawned_vm_vnc_port_number = start_VM(session_xml, session_vm_name)
     print("started on port")
-    print(spawned_vm_port_number)
+    print(spawned_vm_vnc_port_number)
 
     #Return information that is useful to the server
     return {
@@ -111,7 +111,7 @@ def spawn_session(session_id : str, backing_path: str | Path, template_xml_path:
 
 
 #Stops the VM and deletes the overlay file
-def destroy_session(session_vm_name -> str, session_overlay_path -> Path | str) -> bool:
+def destroy_session(session_vm_name: str, session_overlay_path: Path | str) -> bool:
     try:
         conn = libvirt.open("qemu:///system")
     except libvirt.libvirtError as e:
@@ -132,8 +132,8 @@ def destroy_session(session_vm_name -> str, session_overlay_path -> Path | str) 
     try:
         if overlay.exists():
             overlay.unlink()
-    except:
-        printError("An unknown error occured deleting the overlay file '{overlay}': {e})
+    except Exception as e:
+        printError(f"An unknown error occured deleting the overlay file '{overlay}': {e}")
         return False
 
     return True
