@@ -2,26 +2,27 @@ import sys
 from pathlib import Path
 import subprocess
 
-def printError(message):
+def printError(message: str):
     print(message, file=sys.stderr)
 
-def makeDisk(source, ID):
-    file_path = Path(source)
+def makeDisk(source_path: str, session_id: str) -> Path:
+    source = Path(source_path).resolve()
 
-    if file_path.is_file() == False:
-        printError("Input file does not exist")
-        exit(1)
+    if not source.is_file():
+        raise FileNotFoundError(f"Source image not found: {source}")
 
-    print("The file exists")
-    print(file_path.resolve())
+    overlay_directory = Path("/var/lib/libvirt/images/overlays")
+    destination = overlay_directory / f"{session_id}_{source.name}"
 
     subprocess.run(["qemu-img",
                     "create",
                     "-f", "qcow2",
-                    "-b", file_path.resolve(),
+                    "-b", str(source),
                     "-F", "qcow2",
-                    "/var/lib/libvirt/images/overlays/" + ID + "_" + file_path.name
-                   ])
+                    str(destination)
+                    ],
+                    check=True)
 
+    return destination
 
 makeDisk(sys.argv[1], sys.argv[2])
