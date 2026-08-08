@@ -137,3 +137,34 @@ def destroy_session(session_vm_name: str, session_overlay_path: Path | str) -> b
         return False
 
     return True
+
+
+#Stops all sessions. Sessions are determined by having the VM name prefix.
+def destroy_all_sessions(overlay_folder_path: Path | str):
+    #Establish a connection to the hypervisor
+    try:
+        conn = libvirt.open("qemu:///system")
+    except libvirt.libvirtError as e:
+        printError(f"Failed to connect to the hypervisor: {e}")
+        raise
+
+    try:
+        #Get a list of all running VMs and destroy those with the VM prefix
+        domains = conn.listAllDomains()
+        for domain in domains:
+            if domain.name().startswith("tmp__"):
+                print(f"Destroying domain {domain.name()}")
+                domain.destroy()
+
+        #Empty the overlay directory
+        overlays = Path(overlay_folder_path)
+        if overlays.exists():
+            for file in overlays.iterdir():
+                if file.is_file() and file.name.endswith(".qcow2"):
+                    file.unlink()
+    except libvirt.libvirtError as e:
+        printError(f"Failed to communicate with the hypervisor or run operation on it: {e}")
+    except FileNotFoundError as e:
+        printError(f"File not found: {e}")
+    finally:
+        conn.close()
