@@ -1,4 +1,3 @@
-import sys
 import hashlib
 import hmac
 import json
@@ -63,7 +62,6 @@ def encrypt_payload(payload: bytes, secret_key: bytes) -> bytes:
 
 # Base64 encode the ciphertext, then URL encode it
 def url_encode_encrypted_payload(payload: bytes) -> str:
-    # 1. Base64 encode the binary ciphertext
     b64_str = base64.b64encode(payload).decode('utf-8')
 
     # safe='' ensures '+', '/', and '=' are encoded
