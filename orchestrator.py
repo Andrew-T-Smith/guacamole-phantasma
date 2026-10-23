@@ -6,7 +6,7 @@ import libvirt
 import xml.etree.ElementTree as ET
 
 # Prints passed string to stderr
-def printError(message: str):
+def print_error(message: str):
     print(message, file=sys.stderr)
 
 
@@ -66,11 +66,11 @@ def get_port_from_vm(vm_domain) -> int:
     raise RuntimeError("VNC graphics port could not be found in active domain")
 
 # Starts a VM from a passed in XML
-def start_VM(xml_contents: str, vm_name: str):
+def start_vm(xml_contents: str, vm_name: str):
     try:
         conn = libvirt.open("qemu:///system")
     except libvirt.libvirtError as e:
-        printError(f"Failed to connect to the hypervisor: {e}")
+        print_error(f"Failed to connect to the hypervisor: {e}")
         raise
 
     try:
@@ -78,7 +78,7 @@ def start_VM(xml_contents: str, vm_name: str):
         dom = conn.createXML(xml_contents, 0)
 
         if dom is None:
-            printError("Failed to make domain")
+            print_error("Failed to make domain")
             raise RuntimeError(f"Failed to create the domain '{vm_name}'")
         else:
             print(f"Domain '{vm_name}' created")
@@ -97,9 +97,8 @@ def spawn_session(session_id : str, backing_path: str | Path, template_xml_path:
     session_xml = make_domain_xml_from_template(template_xml_path, session_vm_name, overlay_path)
 
     # Start the virtual machine
-    spawned_vm_vnc_port_number = start_VM(session_xml, session_vm_name)
-    print("started on port")
-    print(spawned_vm_vnc_port_number)
+    spawned_vm_vnc_port_number = start_vm(session_xml, session_vm_name)
+    print(f"Started on port {spawned_vm_vnc_port_number}")
 
     # Return information that is useful to the server
     return {
@@ -115,16 +114,16 @@ def destroy_session(session_vm_name: str, session_overlay_path: Path | str) -> b
     try:
         conn = libvirt.open("qemu:///system")
     except libvirt.libvirtError as e:
-        printError(f"Failed to connect to the hypervisor: {e}")
+        print_error(f"Failed to connect to the hypervisor: {e}")
         raise
 
     try:
         print(f"Stopping the domain '{session_vm_name}'")
         dom = conn.lookupByName(session_vm_name)
         dom.destroy()
-        print(f"Domain destroyed")
+        print(f"Domain '{session_vm_name}' destroyed")
     except libvirt.libvirtError:
-        printError(f"Domain '{session_vm_name}' failed to destroy")
+        print_error(f"Domain '{session_vm_name}' failed to destroy")
     finally:
         conn.close()
 
@@ -133,7 +132,7 @@ def destroy_session(session_vm_name: str, session_overlay_path: Path | str) -> b
         if overlay.exists():
             overlay.unlink()
     except Exception as e:
-        printError(f"An unknown error occured deleting the overlay file '{overlay}': {e}")
+        print_error(f"An unknown error occurred deleting the overlay file '{overlay}': {e}")
         return False
 
     return True
@@ -145,7 +144,7 @@ def destroy_all_sessions(overlay_folder_path: Path | str):
     try:
         conn = libvirt.open("qemu:///system")
     except libvirt.libvirtError as e:
-        printError(f"Failed to connect to the hypervisor: {e}")
+        print_error(f"Failed to connect to the hypervisor: {e}")
         raise
 
     try:
@@ -163,8 +162,8 @@ def destroy_all_sessions(overlay_folder_path: Path | str):
                 if file.is_file() and file.name.endswith(".qcow2"):
                     file.unlink()
     except libvirt.libvirtError as e:
-        printError(f"Failed to communicate with the hypervisor or run operation on it: {e}")
+        print_error(f"Failed to communicate with the hypervisor or run operation on it: {e}")
     except FileNotFoundError as e:
-        printError(f"File not found: {e}")
+        print_error(f"File not found: {e}")
     finally:
         conn.close()
