@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import base64
 import urllib.parse
 
-#Generate the raw, unencrypted json for guacamole
+# Generate the raw, unencrypted json for guacamole (expires in 5 minutes)
 def generate_raw_json(username: str, vm_name: str, port: int) -> bytes:
     expires_timestamp = str(int((time.time() + 300) * 1000))
 
@@ -26,19 +26,19 @@ def generate_raw_json(username: str, vm_name: str, port: int) -> bytes:
         "expires": expires_timestamp
     }
 
-    #Convert the dictionary to json
+    # Convert the dictionary to json
     json_string = json.dumps(data, separators=(',', ':'))
 
     return json_string.encode('utf-8')
 
 
-#Generate HMAC signature payload
+# Generate HMAC signature payload
 def generate_HMAC_signed_payload(message: bytes, secret_key: bytes) -> bytes:
     signature = hmac.new(secret_key, msg=message, digestmod=hashlib.sha256)
     return signature.digest() + message
 
 
-#Pad the data for encryption, PKCS7
+# Pad the data for encryption, PKCS7
 def pad_payload_PKCS7(payload: bytes) -> bytes:
     padder = padding.PKCS7(128).padder()
     padded_data = padder.update(payload) + padder.finalize()
@@ -46,11 +46,12 @@ def pad_payload_PKCS7(payload: bytes) -> bytes:
     return padded_data
 
 
+# Encrypt the padded payload, AES-128-CBC
 def encrypt_payload(payload: bytes, secret_key: bytes) -> bytes:
     # Guacamole uses 16 zero-bytes for its IV
     iv = b'\x00' * 16
 
-    # Set up the AES-128-CBC cipher
+    # Set up the cipher
     cipher = Cipher(algorithms.AES(secret_key), modes.CBC(iv))
     encryptor = cipher.encryptor()
 
@@ -60,21 +61,18 @@ def encrypt_payload(payload: bytes, secret_key: bytes) -> bytes:
     return ciphertext
 
 
+# Base64 encode the ciphertext, then URL encode it
 def url_encode_encrypted_payload(payload: bytes) -> str:
     # 1. Base64 encode the binary ciphertext
     b64_str = base64.b64encode(payload).decode('utf-8')
 
-    # 2. Strict URL encode (safe='' ensures '+', '/', and '=' are encoded)
+    # safe='' ensures '+', '/', and '=' are encoded
     url_safe_token = urllib.parse.quote(b64_str, safe='')
 
     return url_safe_token
 
 
-def generate_guacamole_link(baseURL: str, url_encoded_payload) -> str:
-    print(baseURL + url_encoded_payload)
-    return baseURL + url_encoded_payload
-
-
+# Generate a signed, encrypted guacamole link that connects to the given VM's VNC port
 def generate_vm_guacamole_link(username: str, vm_name: str, port: int, signature_key: bytes, encryption_key: bytes, baseURL: str) -> str:
     raw_json = generate_raw_json(username, vm_name, port)
 
@@ -85,4 +83,4 @@ def generate_vm_guacamole_link(username: str, vm_name: str, port: int, signature
 
     url_encrypted_json = url_encode_encrypted_payload(encrypted_json)
 
-    return generate_guacamole_link(baseURL, url_encrypted_json)
+    return baseURL + url_encrypted_json

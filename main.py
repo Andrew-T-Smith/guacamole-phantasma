@@ -18,10 +18,10 @@ def startup_functions():
     destroy_all_sessions("/var/lib/libvirt/images/overlays/")
 
 def shutdown_functions():
-    #shutdown functions here
+    # shutdown functions here
     pass
 
-#Startup and shutdown actions
+# Startup and shutdown actions
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     startup_functions()

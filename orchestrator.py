@@ -5,12 +5,12 @@ import uuid
 import libvirt
 import xml.etree.ElementTree as ET
 
-#Prints passed string to stderr
+# Prints passed string to stderr
 def printError(message: str):
     print(message, file=sys.stderr)
 
 
-#Makes a disk overlay based on the passed in source path and session ID
+# Makes a disk overlay based on the passed in source path and session ID
 def make_disk(source_path: str, session_id: str) -> Path:
     source = Path(source_path).resolve()
 
@@ -20,7 +20,7 @@ def make_disk(source_path: str, session_id: str) -> Path:
     overlay_directory = Path("/var/lib/libvirt/images/overlays")
     destination = overlay_directory / f"{session_id}_{source.name}"
 
-    #Ensure the directory exists
+    # Ensure the directory exists
     overlay_directory.mkdir(parents=True, exist_ok=True)
 
     subprocess.run(["qemu-img",
@@ -35,7 +35,7 @@ def make_disk(source_path: str, session_id: str) -> Path:
     return destination
 
 
-#Makes an XML based on some parameters and a given template XML
+# Makes an XML based on some parameters and a given template XML
 def make_domain_xml_from_template(xml_template_path: str, vm_name: str, hdd_overlay_path: str | Path) -> str:
     xml_path = Path(xml_template_path).resolve()
 
@@ -52,7 +52,7 @@ def make_domain_xml_from_template(xml_template_path: str, vm_name: str, hdd_over
 
     return final_payload
 
-#Gets the port number from a VM XML
+# Gets the port number from a VM XML
 def get_port_from_vm(vm_domain) -> int:
     xml_desc = vm_domain.XMLDesc(0)
     root = ET.fromstring(xml_desc)
@@ -65,7 +65,7 @@ def get_port_from_vm(vm_domain) -> int:
 
     raise RuntimeError("VNC graphics port could not be found in active domain")
 
-#Starts a VM from a passed in XML
+# Starts a VM from a passed in XML
 def start_VM(xml_contents: str, vm_name: str):
     try:
         conn = libvirt.open("qemu:///system")
@@ -87,21 +87,21 @@ def start_VM(xml_contents: str, vm_name: str):
         conn.close()
 
 
-#Creates VM files and starts the VM
+# Creates VM files and starts the VM
 def spawn_session(session_id : str, backing_path: str | Path, template_xml_path: str | Path, base_machine_name: str) -> dict:
-    #Create the overlay disk
+    # Create the overlay disk
     overlay_path = make_disk(backing_path, session_id)
 
-    #Generate the VM XML from the template
+    # Generate the VM XML from the template
     session_vm_name = "tmp__" + base_machine_name + "__" + session_id
     session_xml = make_domain_xml_from_template(template_xml_path, session_vm_name, overlay_path)
 
-    #Start the virtual machine
+    # Start the virtual machine
     spawned_vm_vnc_port_number = start_VM(session_xml, session_vm_name)
     print("started on port")
     print(spawned_vm_vnc_port_number)
 
-    #Return information that is useful to the server
+    # Return information that is useful to the server
     return {
         "session_id": session_id,
         "vm_name": session_vm_name,
@@ -110,7 +110,7 @@ def spawn_session(session_id : str, backing_path: str | Path, template_xml_path:
     }
 
 
-#Stops the VM and deletes the overlay file
+# Stops the VM and deletes the overlay file
 def destroy_session(session_vm_name: str, session_overlay_path: Path | str) -> bool:
     try:
         conn = libvirt.open("qemu:///system")
@@ -139,9 +139,9 @@ def destroy_session(session_vm_name: str, session_overlay_path: Path | str) -> b
     return True
 
 
-#Stops all sessions. Sessions are determined by having the VM name prefix.
+# Stops all sessions. Sessions are determined by having the VM name prefix.
 def destroy_all_sessions(overlay_folder_path: Path | str):
-    #Establish a connection to the hypervisor
+    # Establish a connection to the hypervisor
     try:
         conn = libvirt.open("qemu:///system")
     except libvirt.libvirtError as e:
@@ -149,14 +149,14 @@ def destroy_all_sessions(overlay_folder_path: Path | str):
         raise
 
     try:
-        #Get a list of all running VMs and destroy those with the VM prefix
+        # Get a list of all running VMs and destroy those with the VM prefix
         domains = conn.listAllDomains()
         for domain in domains:
             if domain.name().startswith("tmp__"):
                 print(f"Destroying domain {domain.name()}")
                 domain.destroy()
 
-        #Empty the overlay directory
+        # Empty the overlay directory
         overlays = Path(overlay_folder_path)
         if overlays.exists():
             for file in overlays.iterdir():
