@@ -1,25 +1,24 @@
-from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
-from orchestrator import spawn_session
-from orchestrator import destroy_all_sessions
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
+from orchestrator import spawn_session, destroy_all_sessions
 from guac_utils import generate_vm_guacamole_link
 from contextlib import asynccontextmanager
 import uuid
 import os
 from dotenv import load_dotenv
-from fastapi.responses import HTMLResponse
-from fastapi import HTTPException
 from sqlmodel import Session, select
 from database import engine
 from models import Machine
 
+load_dotenv()
 
-#Placeholder
+key = os.getenv("PASSWORD")
+
 def startup_functions():
     destroy_all_sessions("/var/lib/libvirt/images/overlays/")
 
 def shutdown_functions():
-    #my code here
+    #shutdown functions here
     pass
 
 #Startup and shutdown actions
@@ -32,17 +31,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 @app.get("/", response_class=HTMLResponse)
-async def root():
+def root():
     with open("index.html", "r") as file:
         return file.read()
 
-
-load_dotenv()
-
-key = os.getenv("PASSWORD")
-
 @app.get("/api/machines/")
-async def get_machines():
+def get_machines():
     with Session(engine) as session:
         statement = select(Machine)
         machines = session.exec(statement).all()
@@ -57,12 +51,12 @@ async def get_machines():
         ]
 
 @app.post("/api/launch/id/{machine_id}")
-async def launch_vm(machine_id: int):
+def launch_vm(machine_id: int):
     with Session(engine) as session:
         machine = session.get(Machine, machine_id)
 
         if not machine:
-            raise HTTPException(status_code=404, detail=f"Machine '{machine_name}' not found.")
+            raise HTTPException(status_code=404, detail=f"Machine '{machine_id}' not found.")
 
         session_uuid = str(uuid.uuid4())
         session_details = spawn_session(session_uuid, machine.overlay_path, machine.template_xml_path, machine.name)
