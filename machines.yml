@@ -1,4 +1,0 @@
-machines:
-  - name: "Windows XP Fresh Install"
-    template: "/var/lib/libvirt/images/templates/Windows-XP-SP3-Clean-Install.xml"
-    overlay: "/var/lib/libvirt/images/masters/Windows-XP-SP3-Clean-Install.qcow2"
