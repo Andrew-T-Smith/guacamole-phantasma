@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VM Portal</title>
+</head>
+<body>
+
+    <h1>Virtual Machine Portal</h1>
+
+    <!-- Container where JS appends machine buttons -->
+    <div id="vm-list"></div>
+
+    <script>
+        async function loadDashboard() {
+            try {
+                // Fetch clean JSON array from FastAPI
+                const response = await fetch('/api/machines/');
+                const machines = await response.json();
+
+                const container = document.getElementById('vm-list');
+                container.innerHTML = '';
+
+                // Loop directly over array returned by backend
+                machines.forEach(machine => {
+                    const wrapper = document.createElement('div');
+
+                    wrapper.innerHTML = `
+                        <h3>${machine.display_name || machine.name}</h3>
+                        <button id="btn-${machine.id}" onclick="launchVM(${machine.id})">
+                            Launch Session
+                        </button>
+                        <hr>
+                    `;
+
+                    container.appendChild(wrapper);
+                });
+            } catch (err) {
+                console.error("Failed to load machine list:", err);
+            }
+        }
+
+        async function launchVM(machineId) {
+            const button = document.getElementById(`btn-${machineId}`);
+            button.disabled = true;
+            button.innerText = "Spawning...";
+
+            try {
+                const response = await fetch(`/api/launch/id/${machineId}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (result.url) {
+                    window.location.href = result.url;
+                } else {
+                    alert("Error launching VM: " + (result.detail || "Unknown error"));
+                    button.disabled = false;
+                    button.innerText = "Launch Session";
+                }
+            } catch (err) {
+                alert("Server error during launch");
+                button.disabled = false;
+                button.innerText = "Launch Session";
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadDashboard);
+    </script>
+</body>
+</html>
