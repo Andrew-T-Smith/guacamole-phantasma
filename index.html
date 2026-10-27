@@ -7,6 +7,36 @@
 
     <h1>Virtual Machine Portal</h1>
 
+    <button id="add-toggle" onclick="toggleAddForm()">Add Machine</button>
+
+    <!-- Hidden until "Add Machine" is clicked -->
+    <form id="add-form" hidden onsubmit="createMachine(event)">
+        <p>
+            <label>Name<br>
+                <input type="text" id="add-name" size="50" required>
+            </label>
+        </p>
+        <p>
+            <label>Display name (optional)<br>
+                <input type="text" id="add-display-name" size="50">
+            </label>
+        </p>
+        <p>
+            <label>Master image path<br>
+                <input type="text" id="add-overlay-path" size="50" required>
+            </label>
+        </p>
+        <p>
+            <label>Template XML path<br>
+                <input type="text" id="add-template-xml-path" size="50" required>
+            </label>
+        </p>
+        <button type="submit">Create</button>
+        <button type="button" onclick="toggleAddForm()">Cancel</button>
+    </form>
+
+    <hr>
+
     <!-- Container where JS appends machine buttons -->
     <div id="vm-list"></div>
 
@@ -22,15 +52,56 @@
 
                 // Loop directly over array returned by backend
                 machines.forEach(machine => {
+                    const label = machine.display_name || machine.name;
                     const wrapper = document.createElement('div');
 
-                    wrapper.innerHTML = `
-                        <h3>${machine.display_name || machine.name}</h3>
-                        <button id="btn-${machine.id}" onclick="launchVM(${machine.id})">
-                            Launch Session
-                        </button>
-                        <hr>
-                    `;
+                    // The label is set with textContent so a machine name can't inject HTML
+                    const title = document.createElement('h3');
+                    title.textContent = label;
+                    wrapper.appendChild(title);
+
+                    const launchButton = document.createElement('button');
+                    launchButton.id = `btn-${machine.id}`;
+                    launchButton.textContent = 'Launch Session';
+                    launchButton.onclick = () => launchVM(machine.id);
+                    wrapper.appendChild(launchButton);
+
+                    // Edit panel, hidden until "Edit" is clicked. Add future edit options here.
+                    const editPanel = document.createElement('div');
+                    editPanel.hidden = true;
+
+                    const displayNameLabel = document.createElement('label');
+                    displayNameLabel.textContent = 'Display name ';
+                    const displayNameInput = document.createElement('input');
+                    displayNameInput.type = 'text';
+                    // Shown in grey when the box is empty: this is what the page displays instead
+                    displayNameInput.placeholder = machine.name;
+                    displayNameInput.size = 40;
+                    displayNameInput.value = machine.display_name || '';
+                    displayNameLabel.appendChild(displayNameInput);
+                    editPanel.appendChild(displayNameLabel);
+
+                    const saveButton = document.createElement('button');
+                    saveButton.textContent = 'Save';
+                    saveButton.onclick = () => renameMachine(machine.id, displayNameInput.value);
+                    editPanel.appendChild(saveButton);
+
+                    const editButton = document.createElement('button');
+                    editButton.textContent = 'Edit';
+                    editButton.onclick = () => {
+                        editPanel.hidden = !editPanel.hidden;
+                        displayNameInput.value = machine.display_name || '';
+                    };
+                    wrapper.appendChild(editButton);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.onclick = () => deleteMachine(machine.id, label);
+                    wrapper.appendChild(deleteButton);
+
+                    wrapper.appendChild(editPanel);
+
+                    wrapper.appendChild(document.createElement('hr'));
 
                     container.appendChild(wrapper);
                 });
@@ -61,6 +132,93 @@
                 alert("Server error during launch");
                 button.disabled = false;
                 button.innerText = "Launch Session";
+            }
+        }
+
+        function toggleAddForm() {
+            const form = document.getElementById('add-form');
+            form.hidden = !form.hidden;
+            if (form.hidden) {
+                form.reset();
+            }
+        }
+
+        async function createMachine(event) {
+            // Stop the browser from submitting the form and reloading the page
+            event.preventDefault();
+
+            const body = {
+                name: document.getElementById('add-name').value.trim(),
+                display_name: document.getElementById('add-display-name').value.trim() || null,
+                overlay_path: document.getElementById('add-overlay-path').value.trim(),
+                template_xml_path: document.getElementById('add-template-xml-path').value.trim()
+            };
+
+            try {
+                const response = await fetch('/api/machines/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                if (response.ok) {
+                    toggleAddForm();
+                    loadDashboard();
+                } else {
+                    const result = await response.json();
+                    // Validation errors (422) send a list; our own errors send a string
+                    const detail = typeof result.detail === 'string'
+                        ? result.detail
+                        : JSON.stringify(result.detail);
+                    alert("Error creating machine: " + (detail || "Unknown error"));
+                }
+            } catch (err) {
+                alert("Server error during create");
+            }
+        }
+
+        async function renameMachine(machineId, newDisplayName) {
+            try {
+                const response = await fetch(`/api/machines/${machineId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    // An empty box sends null, which clears the display name
+                    body: JSON.stringify({ display_name: newDisplayName.trim() || null })
+                });
+
+                if (response.ok) {
+                    loadDashboard();
+                } else {
+                    const result = await response.json();
+                    const detail = typeof result.detail === 'string'
+                        ? result.detail
+                        : JSON.stringify(result.detail);
+                    alert("Error renaming machine: " + (detail || "Unknown error"));
+                }
+            } catch (err) {
+                alert("Server error during rename");
+            }
+        }
+
+        async function deleteMachine(machineId, label) {
+            if (!confirm(`Delete "${label}"?\n\nThis removes the machine from the portal. Its image and template files are not deleted.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/machines/${machineId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadDashboard();
+                } else {
+                    // A 204 has no body, but error responses do
+                    const result = await response.json();
+                    alert("Error deleting machine: " + (result.detail || "Unknown error"));
+                }
+            } catch (err) {
+                alert("Server error during delete");
             }
         }
 

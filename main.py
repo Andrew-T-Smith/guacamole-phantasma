@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv
 from sqlmodel import Session, select
 from database import engine
-from models import Machine, MachineCreate
+from models import Machine, MachineCreate, MachineRename
 
 load_dotenv()
 
@@ -105,3 +105,23 @@ def delete_machine(machine_id: int):
         # Only the database row is removed; the image and template files are left alone
         session.delete(machine)
         session.commit()
+
+# Rename a machine's display name
+@app.patch("/api/machines/{machine_id}", status_code=200)
+def rename_machine_display_name(machine_id: int, rename_in: MachineRename):
+    with Session(engine) as session:
+        machine = session.get(Machine, machine_id)
+
+        if not machine:
+            raise HTTPException(status_code=404, detail=f"Machine '{machine_id}' not found.")
+
+        machine.display_name = rename_in.display_name
+        session.add(machine)
+        session.commit()
+        session.refresh(machine)
+
+        return {
+            "id": machine.id,
+            "name": machine.name,
+            "display_name": machine.display_name
+        }
