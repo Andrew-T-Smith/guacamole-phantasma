@@ -5,17 +5,15 @@ from guac_utils import generate_vm_guacamole_link
 from contextlib import asynccontextmanager
 import uuid
 import os
-from dotenv import load_dotenv
 from sqlmodel import Session, select
 from database import engine
 from models import Machine, MachineCreate, MachineRename
+import config
 
-load_dotenv()
-
-key = os.getenv("PASSWORD")
+key = config.PASSWORD
 
 def startup_functions():
-    destroy_all_sessions("/var/lib/libvirt/images/overlays/")
+    destroy_all_sessions(config.OVERLAY_DIR)
 
 def shutdown_functions():
     # shutdown functions here
@@ -61,7 +59,7 @@ def launch_vm(machine_id: int):
         session_uuid = str(uuid.uuid4())
         session_details = spawn_session(session_uuid, machine.overlay_path, machine.template_xml_path, machine.name)
 
-        connection_link = generate_vm_guacamole_link("admin", session_details["vm_name"], session_details["vnc_port"], bytes.fromhex(key), bytes.fromhex(key), "http://192.168.1.177:7654/guacamole/#/?data=")
+        connection_link = generate_vm_guacamole_link(config.GUAC_USER, session_details["vm_name"], session_details["vnc_port"], bytes.fromhex(key), bytes.fromhex(key), config.GUAC_URL + "/#/?data=")
         return {"url": connection_link}
 
 # Create a new machine definition

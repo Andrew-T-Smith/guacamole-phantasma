@@ -4,6 +4,7 @@ import subprocess
 import uuid
 import libvirt
 import xml.etree.ElementTree as ET
+import config
 
 # Prints passed string to stderr
 def print_error(message: str):
@@ -17,7 +18,7 @@ def make_disk(source_path: str, session_id: str) -> Path:
     if not source.is_file():
         raise FileNotFoundError(f"Source image not found: {source}")
 
-    overlay_directory = Path("/var/lib/libvirt/images/overlays")
+    overlay_directory = Path(config.OVERLAY_DIR)
     destination = overlay_directory / f"{session_id}_{source.name}"
 
     # Ensure the directory exists
@@ -68,7 +69,7 @@ def get_port_from_vm(vm_domain) -> int:
 # Starts a VM from a passed in XML
 def start_vm(xml_contents: str, vm_name: str):
     try:
-        conn = libvirt.open("qemu:///system")
+        conn = libvirt.open(config.LIBVIRT_URI)
     except libvirt.libvirtError as e:
         print_error(f"Failed to connect to the hypervisor: {e}")
         raise
@@ -112,7 +113,7 @@ def spawn_session(session_id : str, backing_path: str | Path, template_xml_path:
 # Stops the VM and deletes the overlay file
 def destroy_session(session_vm_name: str, session_overlay_path: Path | str) -> bool:
     try:
-        conn = libvirt.open("qemu:///system")
+        conn = libvirt.open(config.LIBVIRT_URI)
     except libvirt.libvirtError as e:
         print_error(f"Failed to connect to the hypervisor: {e}")
         raise
@@ -142,7 +143,7 @@ def destroy_session(session_vm_name: str, session_overlay_path: Path | str) -> b
 def destroy_all_sessions(overlay_folder_path: Path | str):
     # Establish a connection to the hypervisor
     try:
-        conn = libvirt.open("qemu:///system")
+        conn = libvirt.open(config.LIBVIRT_URI)
     except libvirt.libvirtError as e:
         print_error(f"Failed to connect to the hypervisor: {e}")
         raise

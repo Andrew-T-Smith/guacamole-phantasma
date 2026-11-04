@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import base64
 import urllib.parse
+import config
 
 # Generate the raw, unencrypted json for guacamole (expires in 5 minutes)
 def generate_raw_json(username: str, vm_name: str, port: int) -> bytes:
@@ -17,7 +18,7 @@ def generate_raw_json(username: str, vm_name: str, port: int) -> bytes:
             vm_name: {
                 "protocol": "vnc",
                 "parameters": {
-                    "hostname": "192.168.1.177",
+                    "hostname": config.VNC_HOST,
                     "port": str(port)
                 }
             }
