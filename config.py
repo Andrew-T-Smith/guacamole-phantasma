@@ -11,6 +11,9 @@ OVERLAY_DIR = os.environ["OVERLAY_DIR"]
 MASTERS_DIR = os.environ["MASTERS_DIR"]
 TEMPLATES_DIR = os.environ["TEMPLATES_DIR"]
 
+# Database (SQLAlchemy URL)
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///database.db")
+
 # libvirt connection
 LIBVIRT_URI = os.getenv("LIBVIRT_URI", "qemu:///system")
 
